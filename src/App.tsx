@@ -7,6 +7,7 @@ import { generateWordSearch } from './utils/wordSearchGenerator';
 import { GridCell } from './types';
 import { Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import DrawStyleTypes from './pdf/draw/drawStyleTypes';
 
 function App() {
   const [words, setWords] = useState<string[]>([]);
@@ -42,8 +43,6 @@ function App() {
     const drawGrid = (startY: number, showSolution: boolean) => {
       const cellSize = 8;
       const startX = 50;
-      const dotRadius = 0.25; // Smaller dots
-      const dotOffset = cellSize / 3; // Spacing between dots
 
       // Draw letters first
       grid.forEach((row, i) => {
@@ -60,78 +59,82 @@ function App() {
 
       // If showing solution, draw ellipses for each word
       if (showSolution) {
-        // Get unique word placements
-        const wordPlacements = new Set<string>();
-        grid.forEach((row, i) => {
-          row.forEach((cell, j) => {
-            if (cell.isPartOfWord) {
-              cell.words.forEach(word => {
-                // Find all cells for this word
-                const wordCells: [number, number][] = [];
-                let found = false;
-                
-                // Check all possible directions from this cell
-                const directions = [
-                  [0, 1], [1, 0], [1, 1], [1, -1],  // right, down, diagonal down-right, diagonal down-left
-                  [0, -1], [-1, 0], [-1, -1], [-1, 1]  // left, up, diagonal up-left, diagonal up-right
-                ];
-
-                for (const [dx, dy] of directions) {
-                  if (found) break;
-                  
-                  let cells: [number, number][] = [];
-                  let currentRow = i;
-                  let currentCol = j;
-                  let matchLength = 0;
-                  
-                  while (
-                    currentRow >= 0 && currentRow < gridSize &&
-                    currentCol >= 0 && currentCol < gridSize &&
-                    matchLength < word.length
-                  ) {
-                    if (grid[currentRow][currentCol].letter === word[matchLength]) {
-                      cells.push([currentRow, currentCol]);
-                      matchLength++;
-                      if (matchLength === word.length) {
-                        found = true;
-                        wordCells.push(...cells);
-                        break;
-                      }
-                      currentRow += dx;
-                      currentCol += dy;
-                    } else {
-                      break;
-                    }
-                  }
-                }
-
-                if (wordCells.length > 0) {
-                  const key = wordCells.map(([r, c]) => `${r},${c}`).join('|');
-                  if (!wordPlacements.has(key)) {
-                    wordPlacements.add(key);
-                    
-                    // Draw ellipses around the word
-                    doc.setDrawColor(0, 0, 0);
-                    doc.setFillColor(0, 0, 0);
-                    
-                    wordCells.forEach(([r, c]) => {
-                      const x = startX + c * cellSize;
-                      const y = startY + r * cellSize;
-                      
-                      // Draw three dots vertically for each letter
-                      doc.circle(x - dotOffset, y, dotRadius, 'F'); // Left dot
-                      doc.circle(x, y - dotOffset, dotRadius, 'F'); // Top dot
-                      doc.circle(x + dotOffset, y, dotRadius, 'F'); // Right dot
-                      doc.circle(x, y + dotOffset, dotRadius, 'F'); // Bottom dot
-                    });
-                  }
-                }
-              });
-            }
-          });
-        });
+        drawSolution(cellSize, startX, startY);
       }
     };
+
+    const drawSolution = (cellSize:number, startX:number, startY:number) => {
+      const dotRadius = 3; // Smaller dots
+      //const dotOffset = cellSize / 3; // Spacing between dots
+
+      // Get unique word placements
+      const wordPlacements = new Set<string>();
+      grid.forEach((row, i) => {
+        row.forEach((cell, j) => {
+          if (cell.isPartOfWord) {
+            cell.words.forEach(word => {
+              // Find all cells for this word
+              const wordCells: [number, number][] = [];
+              let found = false;
+              
+              // Check all possible directions from this cell
+              const directions = [
+                [0, 1], [1, 0], [1, 1], [1, -1],  // right, down, diagonal down-right, diagonal down-left
+                [0, -1], [-1, 0], [-1, -1], [-1, 1]  // left, up, diagonal up-left, diagonal up-right
+              ];
+
+              for (const [dx, dy] of directions) {
+                if (found) break;
+                
+                let cells: [number, number][] = [];
+                let currentRow = i;
+                let currentCol = j;
+                let matchLength = 0;
+                
+                while (
+                  currentRow >= 0 && currentRow < gridSize &&
+                  currentCol >= 0 && currentCol < gridSize &&
+                  matchLength < word.length
+                ) {
+                  if (grid[currentRow][currentCol].letter === word[matchLength]) {
+                    cells.push([currentRow, currentCol]);
+                    matchLength++;
+                    if (matchLength === word.length) {
+                      found = true;
+                      wordCells.push(...cells);
+                      break;
+                    }
+                    currentRow += dx;
+                    currentCol += dy;
+                  } else {
+                    break;
+                  }
+                }
+              }
+
+              if (wordCells.length > 0) {
+                const key = wordCells.map(([r, c]) => `${r},${c}`).join('|');
+                if (!wordPlacements.has(key)) {
+                  wordPlacements.add(key);
+                  
+                  // Draw colors around the word
+                  doc.setDrawColor(255, 0, 0);
+                  doc.setFillColor(255, 0, 0);
+                  
+                  wordCells.forEach(([r, c]) => {
+                    const x = startX + c * cellSize;
+                    const y = startY + r * cellSize;
+                    
+                    // Draw dots for each letter
+                    doc.circle(x, y, dotRadius, DrawStyleTypes.Stroke); // Top dot
+                  });
+                }
+              }
+            });
+          }
+        });
+      });
+    }
 
     const addWordList = (startY: number) => {
       doc.setFontSize(14);
